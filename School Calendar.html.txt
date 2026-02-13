@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Pickup & Dropoff</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            background: linear-gradient(135deg, #EFF6FF 0%, #E0E7FF 100%); 
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 1.5rem; margin-bottom: 1.5rem; }
+        .header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; }
+        .title { font-size: 1.875rem; font-weight: bold; color: #1F2937; }
+        .btn-group { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .btn { padding: 0.5rem 1rem; border-radius: 8px; border: none; cursor: pointer; font-size: 0.875rem; font-weight: 600; }
+        .btn-primary { background: #4F46E5; color: white; }
+        .btn-primary:active { background: #4338CA; }
+        .btn-secondary { background: #3B82F6; color: white; }
+        .btn-secondary:active { background: #2563EB; }
+        .btn-gray { background: #E5E7EB; color: #374151; }
+        .btn-gray:active { background: #D1D5DB; }
+        .info-box { background: #EFF6FF; border-left: 4px solid #3B82F6; padding: 1rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.875rem; color: #1E40AF; }
+        .calendar-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        .month-title { font-size: 1.5rem; font-weight: bold; color: #1F2937; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem; }
+        .day-header { text-align: center; font-weight: bold; color: #4B5563; padding: 0.5rem; font-size: 0.875rem; }
+        .day-cell { min-height: 8rem; border: 2px solid #D1D5DB; border-radius: 8px; padding: 0.5rem; position: relative; background: white; }
+        .day-cell.clickable { cursor: pointer; }
+        .day-cell.clickable:active { border-color: #4F46E5; }
+        .day-cell.holiday { background: #FFF7ED; border-color: #FED7AA; }
+        .day-cell.weekend { background: #F3F4F6; }
+        .day-number { font-weight: 600; color: #374151; margin-bottom: 0.25rem; }
+        .holiday-name { font-size: 0.75rem; font-weight: 600; color: #C2410C; margin-bottom: 0.25rem; }
+        .assignment { border-radius: 4px; padding: 0.25rem 0.5rem; font-size: 0.75rem; margin-bottom: 0.25rem; display: flex; justify-content: space-between; align-items: center; }
+        .assignment-name { font-weight: 600; }
+        .remove-btn { cursor: pointer; font-size: 1.2rem; line-height: 1; padding: 0 0.25rem; }
+        .badge { position: absolute; top: 0.25rem; right: 0.25rem; display: flex; gap: 0.25rem; }
+        .missing-dot { width: 8px; height: 8px; background: #EF4444; border-radius: 50%; }
+        .empty-day { font-size: 0.75rem; color: #9CA3AF; text-align: center; margin-top: 0.5rem; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; padding: 1rem; z-index: 50; }
+        .modal.show { display: flex; }
+        .modal-content { background: white; border-radius: 12px; padding: 1.5rem; max-width: 28rem; width: 100%; max-height: 90vh; overflow-y: auto; }
+        .modal-title { font-size: 1.25rem; font-weight: bold; margin-bottom: 1rem; }
+        .form-group { margin-bottom: 1rem; }
+        .form-label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .form-input { width: 100%; padding: 0.5rem 1rem; border: 2px solid #D1D5DB; border-radius: 8px; font-size: 1rem; }
+        .form-input:focus { outline: none; border-color: #4F46E5; }
+        .radio-group { display: flex; gap: 1rem; flex-wrap: wrap; }
+        .radio-label { display: flex; align-items: center; cursor: pointer; }
+        .radio-label input { margin-right: 0.5rem; }
+        .button-group { display: flex; gap: 0.5rem; margin-top: 1rem; }
+        .button-group button { flex: 1; padding: 0.75rem; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; }
+        .legend-section { margin-top: 1.5rem; }
+        .legend-items { display: flex; flex-wrap: wrap; gap: 1rem; font-size: 0.875rem; margin: 0.75rem 0; }
+        .legend-item { display: flex; align-items: center; gap: 0.5rem; }
+        .legend-box { width: 24px; height: 24px; border: 2px solid; border-radius: 4px; }
+        .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .people-list { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem; }
+        .person-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; padding: 0.25rem 0.75rem; background: #F3F4F6; border-radius: 16px; }
+        .person-color { width: 12px; height: 12px; border-radius: 50%; }
+        .setting-option { display: flex; align-items: flex-start; padding: 0.75rem; border: 2px solid #D1D5DB; border-radius: 8px; cursor: pointer; margin-bottom: 0.5rem; }
+        .setting-option:active { background: #F9FAFB; }
+        .setting-option input { margin-right: 0.75rem; margin-top: 0.25rem; }
+        .setting-desc { font-size: 0.75rem; color: #6B7280; margin-top: 0.125rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <div class="title">📅 School Pickup & Dropoff</div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="openSettings()">🔔 Settings</button>
+                    <button class="btn btn-secondary" onclick="shareApp()">📤 Share</button>
+                </div>
+            </div>
+
+```
+        <div class="info-box">
+            <strong>How it works:</strong> Click on any weekday to assign pickup or dropoff. You'll receive notifications 1 hour before each scheduled time (7 AM for dropoff, 2 PM for pickup).
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="calendar-nav">
+            <button class="btn btn-gray" onclick="previousMonth()">← Previous</button>
+            <div class="month-title" id="monthTitle"></div>
+            <button class="btn btn-gray" onclick="nextMonth()">Next →</button>
+        </div>
+
+        <div class="calendar-grid" id="calendar"></div>
+
+        <div class="legend-section">
+            <h3 style="font-weight: 600; margin-bottom: 0.75rem;">Legend</h3>
+            <div class="legend-items">
+                <div class="legend-item">
+                    <div class="legend-box" style="background: #FFF7ED; border-color: #FED7AA;"></div>
+                    <span>School Holiday</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background: #F3F4F6; border-color: #D1D5DB;"></div>
+                    <span>Weekend</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #EF4444;"></div>
+                    <span>Missing assignment</span>
+                </div>
+            </div>
+            
+            <div id="peopleSection"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Modal -->
+<div class="modal" id="addModal">
+    <div class="modal-content">
+        <h3 class="modal-title" id="modalTitle"></h3>
+        
+        <div class="form-group">
+            <label class="form-label">Type</label>
+            <div class="radio-group">
+                <label class="radio-label">
+                    <input type="radio" name="scheduleType" value="dropoff" checked>
+                    Dropoff (8 AM)
+                </label>
+                <label class="radio-label">
+                    <input type="radio" name="scheduleType" value="pickup">
+                    Pickup (3 PM)
+                </label>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Person's Name</label>
+            <input type="text" id="personName" class="form-input" placeholder="Enter name">
+        </div>
+
+        <div class="button-group">
+            <button onclick="addPerson()" style="background: #4F46E5; color: white;">Add</button>
+            <button onclick="closeAddModal()" style="background: #E5E7EB; color: #374151;">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal" id="settingsModal">
+    <div class="modal-content">
+        <h3 class="modal-title">Notification Settings</h3>
+        
+        <div class="form-group">
+            <label class="form-label">How would you like to receive reminders?</label>
+            
+            <label class="setting-option">
+                <input type="radio" name="notifPref" value="push" checked>
+                <div>
+                    <div style="font-weight: 600;">Push Notifications Only</div>
+                    <div class="setting-desc">Get alerts in the app</div>
+                </div>
+            </label>
+
+            <label class="setting-option">
+                <input type="radio" name="notifPref" value="sms">
+                <div>
+                    <div style="font-weight: 600;">SMS Only</div>
+                    <div class="setting-desc">Get text messages</div>
+                </div>
+            </label>
+
+            <label class="setting-option">
+                <input type="radio" name="notifPref" value="both">
+                <div>
+                    <div style="font-weight: 600;">Both Push & SMS</div>
+                    <div class="setting-desc">Get all notifications</div>
+                </div>
+            </label>
+        </div>
+
+        <div class="form-group" id="phoneGroup" style="display: none;">
+            <label class="form-label">Phone Number</label>
+            <input type="tel" id="phoneNumber" class="form-input" placeholder="+61 4XX XXX XXX">
+            <p style="font-size: 0.75rem; color: #6B7280; margin-top: 0.25rem;">Include country code (e.g., +61 for Australia)</p>
+        </div>
+
+        <div class="button-group">
+            <button onclick="saveSettings()" style="background: #4F46E5; color: white;">Save Settings</button>
+            <button onclick="closeSettings()" style="background: #E5E7EB; color: #374151;">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const NSW_HOLIDAYS_2026 = [
+        { start: '2026-01-01', end: '2026-01-29', name: 'Summer Holidays' },
+        { start: '2026-04-06', end: '2026-04-17', name: 'Autumn Holidays' },
+        { start: '2026-06-29', end: '2026-07-10', name: 'Winter Holidays' },
+        { start: '2026-09-21', end: '2026-10-02', name: 'Spring Holidays' },
+        { start: '2026-12-18', end: '2027-01-28', name: 'Summer Holidays' }
+    ];
+
+    const PERSON_COLORS = [
+        '#8B5CF6', '#EC4899', '#F59E0B', '#10B981',
+        '#3B82F6', '#EF4444', '#14B8A6', '#F97316'
+    ];
+
+    let currentDate = new Date();
+    let selectedDate = null;
+    let schedule = {};
+    let people = {};
+    let notificationPreference = 'push';
+    let phoneNumber = '';
+
+    function loadData() {
+        try {
+            const savedSchedule = localStorage.getItem('school-schedule');
+            const savedPeople = localStorage.getItem('school-people');
+            const savedPrefs = localStorage.getItem('notification-prefs');
+            
+            if (savedSchedule) schedule = JSON.parse(savedSchedule);
+            if (savedPeople) people = JSON.parse(savedPeople);
+            if (savedPrefs) {
+                const prefs = JSON.parse(savedPrefs);
+                notificationPreference = prefs.preference || 'push';
+                phoneNumber = prefs.phoneNumber || '';
+            }
+        } catch (error) {
+            console.error('Error loading data:', error);
+        }
+    }
+
+    function saveSchedule() {
+        localStorage.setItem('school-schedule', JSON.stringify(schedule));
+    }
+
+    function savePeople() {
+        localStorage.setItem('school-people', JSON.stringify(people));
+    }
+
+    function saveNotificationPreference() {
+        localStorage.setItem('notification-prefs', JSON.stringify({
+            preference: notificationPreference,
+            phoneNumber: phoneNumber
+        }));
+    }
+
+    function getOrAssignColor(name) {
+        if (people[name]) return people[name].color;
+        
+        const usedColors = Object.values(people).map(p => p.color);
+        const availableColor = PERSON_COLORS.find(c => !usedColors.includes(c)) || PERSON_COLORS[0];
+        
+        people[name] = { color: availableColor };
+        savePeople();
+        return availableColor;
+    }
+
+    function formatDate(date) {
+        return date.toISOString().split('T')[0];
+    }
+
+    function isWeekday(date) {
+        const day = date.getDay();
+        return day !== 0 && day !== 6;
+    }
+
+    function isHoliday(date) {
+        const dateStr = formatDate(date);
+        return NSW_HOLIDAYS_2026.some(h => dateStr >= h.start && dateStr <= h.end);
+    }
+
+    function getHolidayName(date) {
+        const dateStr = formatDate(date);
+        const holiday = NSW_HOLIDAYS_2026.find(h => dateStr >= h.start && dateStr <= h.end);
+        return holiday ? holiday.name : null;
+    }
+
+    function renderCalendar() {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        const monthName = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+        
+        document.getElementById('monthTitle').textContent = monthName;
+        
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const daysInMonth = lastDay.getDate();
+        const startingDayOfWeek = firstDay.getDay();
+        
+        let html = '';
+        
+        // Day headers
+        ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(day => {
+            html += `<div class="day-header">${day}</div>`;
+        });
+        
+        // Empty cells
+        for (let i = 0; i < startingDayOfWeek; i++) {
+            html += '<div></div>';
+        }
+        
+        // Days
+        for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(year, month, day);
+            const dateKey = formatDate(date);
+            const daySchedule = schedule[dateKey] || {};
+            const holiday = isHoliday(date);
+            const holidayName = getHolidayName(date);
+            const weekday = isWeekday(date);
+            const isClickable = weekday && !holiday;
+            
+            let classes = 'day-cell';
+            if (isClickable) classes += ' clickable';
+            if (holiday) classes += ' holiday';
+            if (!weekday && !holiday) classes += ' weekend';
+            
+            let cellContent = `<div class="day-number">${day}</div>`;
+            
+            // Missing slots badge
+            if (isClickable && (!daySchedule.dropoff || !daySchedule.pickup)) {
+                cellContent += '<div class="badge">';
+                if (!daySchedule.dropoff) cellContent += '<div class="missing-dot"></div>';
+                if (!daySchedule.pickup) cellContent += '<div class="missing-dot"></div>';
+                cellContent += '</div>';
+            }
+            
+            if (holiday) {
+                cellContent += `<div class="holiday-name">${holidayName}</div>`;
+            }
+            
+            if (isClickable) {
+                if (daySchedule.dropoff) {
+                    const color = people[daySchedule.dropoff]?.color || '#10B981';
+                    cellContent += `
+                        <div class="assignment" style="background: ${color}20; border-left: 3px solid ${color}">
+                            <div class="assignment-name" style="color: ${color}">↓ ${daySchedule.dropoff}</div>
+                            <span class="remove-btn" onclick="removePerson(event, '${dateKey}', 'dropoff')" style="color: ${color}">✕</span>
+                        </div>
+                    `;
+                }
+                
+                if (daySchedule.pickup) {
+                    const color = people[daySchedule.pickup]?.color || '#3B82F6';
+                    cellContent += `
+                        <div class="assignment" style="background: ${color}20; border-left: 3px solid ${color}">
+                            <div class="assignment-name" style="color: ${color}">↑ ${daySchedule.pickup}</div>
+                            <span class="remove-btn" onclick="removePerson(event, '${dateKey}', 'pickup')" style="color: ${color}">✕</span>
+                        </div>
+                    `;
+                }
+                
+                if (!daySchedule.dropoff && !daySchedule.pickup) {
+                    cellContent += '<div class="empty-day">Click to add</div>';
+                }
+            }
+            
+            const onclick = isClickable ? `onclick="openAddModal('${dateKey}')"` : '';
+            html += `<div class="${classes}" ${onclick}>${cellContent}</div>`;
+        }
+        
+        document.getElementById('calendar').innerHTML = html;
+        renderPeopleList();
+    }
+
+    function renderPeopleList() {
+        const peopleList = Object.keys(people);
+        if (peopleList.length === 0) {
+            document.getElementById('peopleSection').innerHTML = '';
+            return;
+        }
+        
+        let html = '<h4 style="font-weight: 600; margin-bottom: 0.5rem; margin-top: 1rem;">People</h4>';
+        html += '<div class="people-list">';
+        
+        peopleList.forEach(name => {
+            const color = people[name].color;
+            html += `
+                <div class="person-item">
+                    <div class="person-color" style="background: ${color}"></div>
+                    <span>${name}</span>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        document.getElementById('peopleSection').innerHTML = html;
+    }
+
+    function openAddModal(dateKey) {
+        selectedDate = dateKey;
+        const date = new Date(dateKey + 'T00:00:00');
+        document.getElementById('modalTitle').textContent = `Add Schedule for ${date.toLocaleDateString()}`;
+        document.getElementById('personName').value = '';
+        document.querySelector('input[name="scheduleType"][value="pickup"]').checked = true;
+        document.getElementById('addModal').classList.add('show');
+    }
+
+    function closeAddModal() {
+        document.getElementById('addModal').classList.remove('show');
+    }
+
+    function addPerson() {
+        const name = document.getElementById('personName').value.trim();
+        if (!name) return;
+        
+        const type = document.querySelector('input[name="scheduleType"]:checked').value;
+        
+        if (!schedule[selectedDate]) schedule[selectedDate] = {};
+        schedule[selectedDate][type] = name;
+        
+        getOrAssignColor(name);
+        saveSchedule();
+        renderCalendar();
+        closeAddModal();
+    }
+
+    function removePerson(event, dateKey, type) {
+        event.stopPropagation();
+        
+        if (schedule[dateKey]) {
+            delete schedule[dateKey][type];
+            if (Object.keys(schedule[dateKey]).length === 0) {
+                delete schedule[dateKey];
+            }
+            saveSchedule();
+            renderCalendar();
+        }
+    }
+
+    function previousMonth() {
+        currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1);
+        renderCalendar();
+    }
+
+    function nextMonth() {
+        currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1);
+        renderCalendar();
+    }
+
+    function openSettings() {
+        document.querySelector(`input[name="notifPref"][value="${notificationPreference}"]`).checked = true;
+        document.getElementById('phoneNumber').value = phoneNumber;
+        updatePhoneVisibility();
+        document.getElementById('settingsModal').classList.add('show');
+    }
+
+    function closeSettings() {
+        document.getElementById('settingsModal').classList.remove('show');
+    }
+
+    function updatePhoneVisibility() {
+        const pref = document.querySelector('input[name="notifPref"]:checked').value;
+        const phoneGroup = document.getElementById('phoneGroup');
+        phoneGroup.style.display = (pref === 'sms' || pref === 'both') ? 'block' : 'none';
+    }
+
+    function saveSettings() {
+        notificationPreference = document.querySelector('input[name="notifPref"]:checked').value;
+        phoneNumber = document.getElementById('phoneNumber').value;
+        
+        if (notificationPreference === 'push' || notificationPreference === 'both') {
+            if ('Notification' in window) {
+                Notification.requestPermission();
+            }
+        }
+        
+        saveNotificationPreference();
+        closeSettings();
+        alert('Notification settings saved!');
+    }
+
+    function shareApp() {
+        const url = window.location.href;
+        if (navigator.share) {
+            navigator.share({
+                title: 'School Pickup & Dropoff Calendar',
+                url: url
+            }).catch(console.error);
+        } else {
+            navigator.clipboard.writeText(url);
+            alert('Link copied! Share this with others.');
+        }
+    }
+
+    // Event listeners
+    document.querySelectorAll('input[name="notifPref"]').forEach(radio => {
+        radio.addEventListener('change', updatePhoneVisibility);
+    });
+
+    document.getElementById('personName').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') addPerson();
+    });
+
+    // Click outside modal to close
+    document.getElementById('addModal').addEventListener('click', function(e) {
+        if (e.target === this) closeAddModal();
+    });
+
+    document.getElementById('settingsModal').addEventListener('click', function(e) {
+        if (e.target === this) closeSettings();
+    });
+
+    // Initialize
+    loadData();
+    renderCalendar();
+    
+    // Check for notifications every minute
+    setInterval(function() {
+        const now = new Date();
+        const todayKey = formatDate(now);
+        const todaySchedule = schedule[todayKey];
+        
+        if (!todaySchedule) return;
+
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        
+        if (currentHour === 14 && currentMinute === 0 && todaySchedule.pickup) {
+            const message = `Reminder: ${todaySchedule.pickup} has school pickup today at 3 PM`;
+            if ((notificationPreference === 'push' || notificationPreference === 'both') && 'Notification' in window && Notification.permission === 'granted') {
+                new Notification('School Pickup/Dropoff Reminder', { body: message });
+            } else {
+                alert(message);
+            }
+        }
+        
+        if (currentHour === 7 && currentMinute === 0 && todaySchedule.dropoff) {
+            const message = `Reminder: ${todaySchedule.dropoff} has school dropoff today at 8 AM`;
+            if ((notificationPreference === 'push' || notificationPreference === 'both') && 'Notification' in window && Notification.permission === 'granted') {
+                new Notification('School Pickup/Dropoff Reminder', { body: message });
+            } else {
+                alert(message);
+            }
+        }
+    }, 60000);
+</script>
+```
+
+</body>
+</html>
